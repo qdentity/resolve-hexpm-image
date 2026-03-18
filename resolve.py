@@ -63,8 +63,8 @@ def docker_head(repo, tag, token):
     }
     resp = http_request(url, headers=headers, method="HEAD")
     if isinstance(resp, urllib.error.HTTPError):
-        return resp.code, {}
-    return resp.status, dict(resp.headers)
+        return resp.code, resp.headers
+    return resp.status, resp.headers
 
 
 def docker_tags(repo, token):
