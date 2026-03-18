@@ -1,0 +1,66 @@
+name: 'Resolve hexpm/elixir image'
+description: 'Resolve the latest hexpm/elixir Docker image tag for given Elixir/OTP versions and distribution'
+branding:
+  icon: 'package'
+  color: 'purple'
+
+inputs:
+  elixir-version:
+    description: 'Elixir version prefix (e.g., 1.17 or 1.17.3)'
+    required: true
+  otp-version:
+    description: 'OTP/Erlang version prefix (e.g., 28 or 28.3.3)'
+    required: true
+  distribution:
+    description: 'OS distribution codename (bookworm, trixie, noble, focal) or alpine'
+    required: false
+    default: 'bookworm'
+  os-family:
+    description: 'OS family override: debian, ubuntu, alpine, or auto (probe registry)'
+    required: false
+    default: 'auto'
+  variant:
+    description: 'Image variant: auto (slim for debian, none for ubuntu/alpine), slim, or empty string'
+    required: false
+    default: 'auto'
+  max-candidates:
+    description: 'Maximum number of base image date tags to try'
+    required: false
+    default: '5'
+  github-token:
+    description: 'GitHub token for API calls (avoids 60/hr unauthenticated limit)'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  builder-image:
+    description: 'Full hexpm/elixir image reference (e.g., hexpm/elixir:1.17.3-erlang-27.1.2-debian-bookworm-20260316-slim)'
+    value: ${{ steps.resolve.outputs.builder-image }}
+  runner-image:
+    description: 'Base runner image (e.g., debian:bookworm-20260316-slim)'
+    value: ${{ steps.resolve.outputs.runner-image }}
+  elixir-version:
+    description: 'Resolved exact Elixir version'
+    value: ${{ steps.resolve.outputs.elixir-version }}
+  otp-version:
+    description: 'Resolved exact OTP version'
+    value: ${{ steps.resolve.outputs.otp-version }}
+  builder-digest:
+    description: 'Docker content digest of the builder image'
+    value: ${{ steps.resolve.outputs.builder-digest }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve hexpm/elixir image
+      id: resolve
+      shell: bash
+      env:
+        INPUT_ELIXIR_VERSION: ${{ inputs.elixir-version }}
+        INPUT_OTP_VERSION: ${{ inputs.otp-version }}
+        INPUT_DISTRIBUTION: ${{ inputs.distribution }}
+        INPUT_OS_FAMILY: ${{ inputs.os-family }}
+        INPUT_VARIANT: ${{ inputs.variant }}
+        INPUT_MAX_CANDIDATES: ${{ inputs.max-candidates }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: python3 ${{ github.action_path }}/resolve.py

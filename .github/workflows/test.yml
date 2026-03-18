@@ -1,0 +1,60 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pytest resolve_test.py -v
+
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - elixir: '1.17'
+            otp: '27'
+            distribution: bookworm
+          - elixir: '1.18'
+            otp: '27'
+            distribution: noble
+            os-family: ubuntu
+          - elixir: '1.17'
+            otp: '27'
+            distribution: alpine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run action
+        id: resolve
+        uses: ./
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+          distribution: ${{ matrix.distribution }}
+          os-family: ${{ matrix.os-family || 'auto' }}
+      - name: Verify outputs
+        run: |
+          echo "builder-image: ${{ steps.resolve.outputs.builder-image }}"
+          echo "runner-image: ${{ steps.resolve.outputs.runner-image }}"
+          echo "elixir-version: ${{ steps.resolve.outputs.elixir-version }}"
+          echo "otp-version: ${{ steps.resolve.outputs.otp-version }}"
+          echo "builder-digest: ${{ steps.resolve.outputs.builder-digest }}"
+
+          # Assert non-empty
+          test -n "${{ steps.resolve.outputs.builder-image }}" || { echo "FAIL: builder-image empty"; exit 1; }
+          test -n "${{ steps.resolve.outputs.runner-image }}" || { echo "FAIL: runner-image empty"; exit 1; }
+          test -n "${{ steps.resolve.outputs.elixir-version }}" || { echo "FAIL: elixir-version empty"; exit 1; }
+          test -n "${{ steps.resolve.outputs.otp-version }}" || { echo "FAIL: otp-version empty"; exit 1; }
+          test -n "${{ steps.resolve.outputs.builder-digest }}" || { echo "FAIL: builder-digest empty"; exit 1; }
+
+          # Structural checks
+          echo "${{ steps.resolve.outputs.builder-image }}" | grep -q "^hexpm/elixir:" || { echo "FAIL: builder-image format"; exit 1; }
+          echo "${{ steps.resolve.outputs.builder-digest }}" | grep -q "^sha256:" || { echo "FAIL: digest format"; exit 1; }
