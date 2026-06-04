@@ -1,5 +1,5 @@
-name: 'Resolve hexpm/elixir image'
-description: 'Resolve the latest hexpm/elixir Docker image tag for given Elixir/OTP versions and distribution'
+name: 'Resolve HexPM Elixir image'
+description: 'Resolve the latest HexPM Elixir Docker image tag for given Elixir/OTP versions and distribution'
 branding:
   icon: 'package'
   color: 'purple'
@@ -27,6 +27,10 @@ inputs:
     description: 'Maximum number of base image date tags to try'
     required: false
     default: '5'
+  elixir-repository:
+    description: 'Docker Hub repository for Elixir builder images'
+    required: false
+    default: 'hexpm/elixir'
   github-token:
     description: 'GitHub token for API calls (avoids 60/hr unauthenticated limit)'
     required: false
@@ -34,7 +38,7 @@ inputs:
 
 outputs:
   builder-image:
-    description: 'Full hexpm/elixir image reference (e.g., hexpm/elixir:1.17.3-erlang-27.1.2-debian-bookworm-20260316-slim)'
+    description: 'Full Elixir image reference (e.g., hexpm/elixir:1.17.3-erlang-27.1.2-debian-bookworm-20260316-slim)'
     value: ${{ steps.resolve.outputs.builder-image }}
   runner-image:
     description: 'Base runner image (e.g., debian:bookworm-20260316-slim)'
@@ -52,7 +56,7 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Resolve hexpm/elixir image
+    - name: Resolve HexPM Elixir image
       id: resolve
       shell: bash
       env:
@@ -62,5 +66,6 @@ runs:
         INPUT_OS_FAMILY: ${{ inputs.os-family }}
         INPUT_VARIANT: ${{ inputs.variant }}
         INPUT_MAX_CANDIDATES: ${{ inputs.max-candidates }}
+        INPUT_ELIXIR_REPOSITORY: ${{ inputs.elixir-repository }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
       run: python3 ${{ github.action_path }}/resolve.py

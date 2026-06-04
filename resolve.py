@@ -299,16 +299,24 @@ def build_runner_image(os_family, base_tag):
     return f"{os_family}:{base_tag}"
 
 
-def verify_hexpm_tag(hexpm_tag, token):
-    """Verify hexpm/elixir tag exists. Returns (exists, digest)."""
-    status, headers = docker_head("hexpm/elixir", hexpm_tag, token)
+def verify_builder_tag(elixir_repository, hexpm_tag, token):
+    """Verify builder image tag exists. Returns (exists, digest)."""
+    status, headers = docker_head(elixir_repository, hexpm_tag, token)
     if status == 200:
         digest = headers.get("Docker-Content-Digest", "")
         return True, digest
     return False, ""
 
 
-def validate_inputs(elixir_version, otp_version, distribution, os_family, variant, max_candidates):
+def validate_inputs(
+    elixir_version,
+    otp_version,
+    distribution,
+    os_family,
+    variant,
+    max_candidates,
+    elixir_repository,
+):
     """Validate all inputs."""
     if not elixir_version:
         sys.exit("elixir-version is required")
@@ -322,6 +330,12 @@ def validate_inputs(elixir_version, otp_version, distribution, os_family, varian
         sys.exit(f"Invalid variant: '{variant}' (must be auto, slim, or empty)")
     if max_candidates < 1:
         sys.exit(f"max-candidates must be positive, got {max_candidates}")
+    repository_pattern = r"^[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+$"
+    if not re.match(repository_pattern, elixir_repository):
+        sys.exit(
+            f"Invalid elixir-repository: '{elixir_repository}' "
+            "(must be a Docker Hub repository path)"
+        )
 
 
 def set_output(name, value):
@@ -340,10 +354,15 @@ def main():
     distribution = os.environ.get("INPUT_DISTRIBUTION", "bookworm").strip()
     os_family = os.environ.get("INPUT_OS_FAMILY", os.environ.get("INPUT_OS-FAMILY", "auto")).strip()
     variant = os.environ.get("INPUT_VARIANT", "auto").strip()
-    max_candidates = int(os.environ.get("INPUT_MAX_CANDIDATES", os.environ.get("INPUT_MAX-CANDIDATES", "5")))
+    max_candidates = int(
+        os.environ.get("INPUT_MAX_CANDIDATES", os.environ.get("INPUT_MAX-CANDIDATES", "5"))
+    )
+    elixir_repository = os.environ.get(
+        "INPUT_ELIXIR_REPOSITORY", os.environ.get("INPUT_ELIXIR-REPOSITORY", "hexpm/elixir")
+    ).strip()
     github_token = os.environ.get("INPUT_GITHUB_TOKEN", os.environ.get("INPUT_GITHUB-TOKEN", "")).strip()
 
-    validate_inputs(elixir_version, otp_version, distribution, os_family, variant, max_candidates)
+    validate_inputs(elixir_version, otp_version, distribution, os_family, variant, max_candidates, elixir_repository)
 
     # Step 1: Resolve version prefixes
     elixir = resolve_elixir_version(elixir_version, github_token or None)
@@ -357,17 +376,17 @@ def main():
     resolved_variant = resolve_variant(variant, os_family)
     base_tags = resolve_base_tags(distribution, os_family, resolved_variant, max_candidates, token_cache)
 
-    # Step 3: Verify hexpm/elixir tag exists
-    log("[verify] Checking hexpm/elixir tags...")
-    hexpm_token = get_docker_token("hexpm/elixir")
+    # Step 3: Verify builder image tag exists
+    log(f"[verify] Checking {elixir_repository} tags...")
+    builder_token = get_docker_token(elixir_repository)
 
     for base_tag in base_tags:
         hexpm_tag = build_hexpm_tag(elixir, otp, os_family, base_tag)
         log(f"  Trying: {hexpm_tag}")
-        exists, digest = verify_hexpm_tag(hexpm_tag, hexpm_token)
+        exists, digest = verify_builder_tag(elixir_repository, hexpm_tag, builder_token)
         if exists:
             log(f"  Found!")
-            builder_image = f"hexpm/elixir:{hexpm_tag}"
+            builder_image = f"{elixir_repository}:{hexpm_tag}"
             runner_image = build_runner_image(os_family, base_tag)
 
             set_output("builder-image", builder_image)
@@ -380,7 +399,7 @@ def main():
         log(f"  Not found (404)")
 
     sys.exit(
-        f"No hexpm/elixir image found for Elixir {elixir}, OTP {otp}, "
+        f"No {elixir_repository} image found for Elixir {elixir}, OTP {otp}, "
         f"{os_family}/{distribution} after trying {len(base_tags)} candidates: "
         f"{', '.join(base_tags)}"
     )

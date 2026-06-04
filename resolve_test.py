@@ -199,13 +199,17 @@ class TestFallbackBehavior(unittest.TestCase):
         token = "test-token"
 
         # First candidate fails
-        exists1, _ = resolve.verify_hexpm_tag("tag1", token)
+        exists1, _ = resolve.verify_builder_tag("hexpm/elixir-amd64", "tag1", token)
         self.assertFalse(exists1)
 
         # Second candidate succeeds
-        exists2, digest = resolve.verify_hexpm_tag("tag2", token)
+        exists2, digest = resolve.verify_builder_tag("hexpm/elixir-amd64", "tag2", token)
         self.assertTrue(exists2)
         self.assertEqual(digest, "sha256:abc123")
+        self.assertEqual(mock_head.call_args_list, [
+            call("hexpm/elixir-amd64", "tag1", token),
+            call("hexpm/elixir-amd64", "tag2", token),
+        ])
 
 
 class TestRetryOn5xx(unittest.TestCase):
@@ -258,32 +262,36 @@ class TestBuildHexpmTag(unittest.TestCase):
 class TestValidation(unittest.TestCase):
     def test_empty_elixir(self):
         with self.assertRaises(SystemExit):
-            resolve.validate_inputs("", "28", "bookworm", "auto", "auto", 5)
+            resolve.validate_inputs("", "28", "bookworm", "auto", "auto", 5, "hexpm/elixir")
 
     def test_empty_otp(self):
         with self.assertRaises(SystemExit):
-            resolve.validate_inputs("1.17", "", "bookworm", "auto", "auto", 5)
+            resolve.validate_inputs("1.17", "", "bookworm", "auto", "auto", 5, "hexpm/elixir")
 
     def test_invalid_distribution(self):
         with self.assertRaises(SystemExit):
-            resolve.validate_inputs("1.17", "28", "Book-worm!", "auto", "auto", 5)
+            resolve.validate_inputs("1.17", "28", "Book-worm!", "auto", "auto", 5, "hexpm/elixir")
 
     def test_invalid_os_family(self):
         with self.assertRaises(SystemExit):
-            resolve.validate_inputs("1.17", "28", "bookworm", "windows", "auto", 5)
+            resolve.validate_inputs("1.17", "28", "bookworm", "windows", "auto", 5, "hexpm/elixir")
 
     def test_invalid_variant(self):
         with self.assertRaises(SystemExit):
-            resolve.validate_inputs("1.17", "28", "bookworm", "auto", "fat", 5)
+            resolve.validate_inputs("1.17", "28", "bookworm", "auto", "fat", 5, "hexpm/elixir")
 
     def test_zero_candidates(self):
         with self.assertRaises(SystemExit):
-            resolve.validate_inputs("1.17", "28", "bookworm", "auto", "auto", 0)
+            resolve.validate_inputs("1.17", "28", "bookworm", "auto", "auto", 0, "hexpm/elixir")
+
+    def test_invalid_elixir_repository(self):
+        with self.assertRaises(SystemExit):
+            resolve.validate_inputs("1.17", "28", "bookworm", "auto", "auto", 5, "HexPM/elixir")
 
     def test_valid_inputs(self):
         # Should not raise
-        resolve.validate_inputs("1.17", "28", "bookworm", "auto", "auto", 5)
-        resolve.validate_inputs("1.17.3", "28.3.3", "alpine", "alpine", "", 1)
+        resolve.validate_inputs("1.17", "28", "bookworm", "auto", "auto", 5, "hexpm/elixir")
+        resolve.validate_inputs("1.17.3", "28.3.3", "alpine", "alpine", "", 1, "hexpm/elixir-amd64")
 
 
 if __name__ == "__main__":
