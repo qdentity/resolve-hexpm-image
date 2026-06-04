@@ -1,6 +1,6 @@
 # resolve-hexpm-image
 
-Resolves the latest `hexpm/elixir` Docker image tag for given Elixir/OTP versions and OS distribution.
+Resolves the latest HexPM Elixir Docker image tag for given Elixir/OTP versions and OS distribution.
 
 Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date tag discovery, and hexpm tag verification — all via stdlib-only Python 3.
 
@@ -26,6 +26,7 @@ Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date t
 | `os-family` | no | `auto` | `debian`, `ubuntu`, `alpine`, or `auto` |
 | `variant` | no | `auto` | `auto` = slim for debian, none for ubuntu/alpine |
 | `max-candidates` | no | `5` | Base image date tags to try |
+| `elixir-repository` | no | `hexpm/elixir` | Docker Hub repository for Elixir builder images |
 | `github-token` | no | `${{ github.token }}` | GitHub API token |
 
 ## Outputs
@@ -62,4 +63,12 @@ Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date t
     otp-version: '28.3'
     distribution: trixie
     os-family: debian
+
+# amd64-only HexPM image repository:
+- uses: qdentity/resolve-hexpm-image@v1
+  with:
+    elixir-version: '1.20.0'
+    otp-version: '28'
+    distribution: bookworm
+    elixir-repository: hexpm/elixir-amd64
 ```
