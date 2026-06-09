@@ -7,7 +7,7 @@ Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date t
 ## Usage
 
 ```yaml
-- uses: qdentity/resolve-hexpm-image@v1
+- uses: qdentity/resolve-hexpm-image@v2
   id: images
   with:
     elixir-version: '1.17'
@@ -43,21 +43,21 @@ Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date t
 
 ```yaml
 # Ubuntu noble:
-- uses: qdentity/resolve-hexpm-image@v1
+- uses: qdentity/resolve-hexpm-image@v2
   with:
     elixir-version: '1.18.4'
     otp-version: '28.0.2'
     distribution: noble
 
 # Alpine:
-- uses: qdentity/resolve-hexpm-image@v1
+- uses: qdentity/resolve-hexpm-image@v2
   with:
     elixir-version: '1.16.3'
     otp-version: '26.2.5'
     distribution: alpine
 
 # Explicit OS family:
-- uses: qdentity/resolve-hexpm-image@v1
+- uses: qdentity/resolve-hexpm-image@v2
   with:
     elixir-version: '1.19'
     otp-version: '28.3'
@@ -65,7 +65,7 @@ Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date t
     os-family: debian
 
 # amd64-only HexPM image repository:
-- uses: qdentity/resolve-hexpm-image@v1
+- uses: qdentity/resolve-hexpm-image@v2
   with:
     elixir-version: '1.20.0'
     otp-version: '28'
