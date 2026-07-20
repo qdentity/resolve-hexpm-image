@@ -54,47 +54,27 @@ class TestResolveElixirVersion(unittest.TestCase):
             resolve.resolve_elixir_version("99.99")
 
 
-class TestResolveOtpCandidates(unittest.TestCase):
+class TestResolveOtpVersion(unittest.TestCase):
     @patch("resolve.http_request")
     def test_resolves_major(self, mock_http):
         refs = make_refs(["OTP-28.0", "OTP-28.1", "OTP-28.3.3", "OTP-28.4.1"])
         mock_http.return_value = make_urlopen_response(refs)
-        result = resolve.resolve_otp_candidates("28")
-        self.assertEqual(result[0], "28.4.1")
+        result = resolve.resolve_otp_version("28")
+        self.assertEqual(result, "28.4.1")
 
     @patch("resolve.http_request")
     def test_resolves_minor_prefix(self, mock_http):
         refs = make_refs(["OTP-28.3", "OTP-28.3.1", "OTP-28.3.2", "OTP-28.3.3"])
         mock_http.return_value = make_urlopen_response(refs)
-        result = resolve.resolve_otp_candidates("28.3")
-        self.assertEqual(result[0], "28.3.3")
+        result = resolve.resolve_otp_version("28.3")
+        self.assertEqual(result, "28.3.3")
 
     @patch("resolve.http_request")
     def test_excludes_rcs(self, mock_http):
         refs = make_refs(["OTP-28.0-rc1", "OTP-28.0", "OTP-28.0.1"])
         mock_http.return_value = make_urlopen_response(refs)
-        result = resolve.resolve_otp_candidates("28.0")
-        self.assertEqual(result[0], "28.0.1")
-
-    @patch("resolve.http_request")
-    def test_orders_newest_first(self, mock_http):
-        refs = make_refs(["OTP-28.5", "OTP-28.5.0.1", "OTP-28.5.0.2", "OTP-28.5.0.3"])
-        mock_http.return_value = make_urlopen_response(refs)
-        result = resolve.resolve_otp_candidates("28.5")
-        self.assertEqual(result, ["28.5.0.3", "28.5.0.2", "28.5.0.1", "28.5"])
-
-    @patch("resolve.http_request")
-    def test_respects_limit(self, mock_http):
-        refs = make_refs(["OTP-28.5", "OTP-28.5.0.1", "OTP-28.5.0.2", "OTP-28.5.0.3"])
-        mock_http.return_value = make_urlopen_response(refs)
-        result = resolve.resolve_otp_candidates("28.5", limit=2)
-        self.assertEqual(result, ["28.5.0.3", "28.5.0.2"])
-
-    @patch("resolve.http_request")
-    def test_no_match_exits(self, mock_http):
-        mock_http.return_value = make_urlopen_response([])
-        with self.assertRaises(SystemExit):
-            resolve.resolve_otp_candidates("99.99")
+        result = resolve.resolve_otp_version("28.0")
+        self.assertEqual(result, "28.0.1")
 
 
 class TestFilterDebianTags(unittest.TestCase):
@@ -230,66 +210,6 @@ class TestFallbackBehavior(unittest.TestCase):
             call("hexpm/elixir-amd64", "tag1", token),
             call("hexpm/elixir-amd64", "tag2", token),
         ])
-
-
-class TestOtpFallbackInMain(unittest.TestCase):
-    """OTP released upstream but not yet imaged by hexpm must fall back."""
-
-    ENV = {
-        "INPUT_ELIXIR_VERSION": "1.20.0",
-        "INPUT_OTP_VERSION": "28.5",
-        "INPUT_DISTRIBUTION": "trixie",
-        "INPUT_OS_FAMILY": "debian",
-        "INPUT_VARIANT": "slim",
-        "INPUT_MAX_CANDIDATES": "5",
-        "INPUT_ELIXIR_REPOSITORY": "hexpm/elixir",
-        "INPUT_GITHUB_TOKEN": "",
-        "GITHUB_OUTPUT": "",
-    }
-
-    @patch("resolve.set_output")
-    @patch("resolve.verify_builder_tag")
-    @patch("resolve.get_docker_token", return_value="tok")
-    @patch("resolve.resolve_base_tags", return_value=["20260610-slim"])
-    @patch("resolve.resolve_otp_candidates", return_value=["28.5.0.3", "28.5.0.2", "28.5"])
-    @patch("resolve.resolve_elixir_version", return_value="1.20.0")
-    def test_skips_unimaged_otp_and_uses_next(
-        self, _elixir, _otp, _base, _token, mock_verify, mock_output
-    ):
-        # 28.5.0.3 exists upstream but hexpm has no image for it yet
-        mock_verify.side_effect = [
-            (False, ""),
-            (True, "sha256:abc123"),
-        ]
-
-        with patch.dict("os.environ", self.ENV, clear=False):
-            resolve.main()
-
-        tried = [c.args[1] for c in mock_verify.call_args_list]
-        self.assertEqual(tried, [
-            "1.20.0-erlang-28.5.0.3-debian-20260610-slim",
-            "1.20.0-erlang-28.5.0.2-debian-20260610-slim",
-        ])
-
-        outputs = dict(c.args for c in mock_output.call_args_list)
-        self.assertEqual(outputs["otp-version"], "28.5.0.2")
-        self.assertEqual(
-            outputs["builder-image"],
-            "hexpm/elixir:1.20.0-erlang-28.5.0.2-debian-20260610-slim",
-        )
-
-    @patch("resolve.set_output")
-    @patch("resolve.verify_builder_tag", return_value=(False, ""))
-    @patch("resolve.get_docker_token", return_value="tok")
-    @patch("resolve.resolve_base_tags", return_value=["20260610-slim"])
-    @patch("resolve.resolve_otp_candidates", return_value=["28.5.0.3", "28.5"])
-    @patch("resolve.resolve_elixir_version", return_value="1.20.0")
-    def test_exits_when_no_candidate_has_an_image(
-        self, _elixir, _otp, _base, _token, _verify, _output
-    ):
-        with patch.dict("os.environ", self.ENV, clear=False):
-            with self.assertRaises(SystemExit):
-                resolve.main()
 
 
 class TestRetryOn5xx(unittest.TestCase):

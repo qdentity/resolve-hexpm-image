@@ -4,8 +4,6 @@ Resolves the latest HexPM Elixir Docker image tag for given Elixir/OTP versions 
 
 Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date tag discovery, and hexpm tag verification — all via stdlib-only Python 3.
 
-An OTP release lands upstream before hexpm builds a matching Elixir image, so the newest OTP version can have no image for hours or days. The resolver walks OTP versions newest-first and picks the newest one hexpm has actually published, rather than failing on the gap.
-
 ## Usage
 
 ```yaml
@@ -23,11 +21,11 @@ An OTP release lands upstream before hexpm builds a matching Elixir image, so th
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
 | `elixir-version` | yes | — | Elixir version prefix (`1.17` → latest `1.17.x`) |
-| `otp-version` | yes | — | OTP version prefix (`28` → latest imaged `28.x.y`) |
+| `otp-version` | yes | — | OTP version prefix (`28` → latest `28.x.y`) |
 | `distribution` | no | `bookworm` | OS codename or `alpine` |
 | `os-family` | no | `auto` | `debian`, `ubuntu`, `alpine`, or `auto` |
 | `variant` | no | `auto` | `auto` = slim for debian, none for ubuntu/alpine |
-| `max-candidates` | no | `5` | OTP versions and base image date tags to try |
+| `max-candidates` | no | `5` | Base image date tags to try |
 | `elixir-repository` | no | `hexpm/elixir` | Docker Hub repository for Elixir builder images |
 | `github-token` | no | `${{ github.token }}` | GitHub API token |
 

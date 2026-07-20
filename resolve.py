@@ -146,13 +146,8 @@ def resolve_elixir_version(prefix, github_token=None):
     return result
 
 
-def resolve_otp_candidates(prefix, github_token=None, limit=5):
-    """Resolve OTP version prefix to candidate versions, newest first.
-
-    An OTP release exists upstream before hexpm builds a matching Elixir image,
-    so the newest OTP version can have no image for hours or days. Returning
-    several candidates lets the caller fall back to the newest one that does.
-    """
+def resolve_otp_version(prefix, github_token=None):
+    """Resolve OTP version prefix to exact version."""
     log(f"[resolve] OTP version prefix: {prefix}")
     refs = github_matching_refs(
         "erlang/otp", f"tags/OTP-{prefix}", github_token
@@ -170,8 +165,8 @@ def resolve_otp_candidates(prefix, github_token=None, limit=5):
     if not versions:
         sys.exit(f"No OTP versions found matching prefix '{prefix}'")
     versions.sort(key=lambda x: x[0], reverse=True)
-    result = [tag for _, tag in versions[:limit]]
-    log(f"  Top {len(result)} candidates: {', '.join(result)}")
+    result = versions[0][1]
+    log(f"  Resolved: {result}")
     return result
 
 
@@ -371,7 +366,7 @@ def main():
 
     # Step 1: Resolve version prefixes
     elixir = resolve_elixir_version(elixir_version, github_token or None)
-    otp_candidates = resolve_otp_candidates(otp_version, github_token or None, max_candidates)
+    otp = resolve_otp_version(otp_version, github_token or None)
 
     # Step 2: Detect OS family and resolve base tags
     token_cache = {}
@@ -385,29 +380,28 @@ def main():
     log(f"[verify] Checking {elixir_repository} tags...")
     builder_token = get_docker_token(elixir_repository)
 
-    for otp in otp_candidates:
-        for base_tag in base_tags:
-            hexpm_tag = build_hexpm_tag(elixir, otp, os_family, base_tag)
-            log(f"  Trying: {hexpm_tag}")
-            exists, digest = verify_builder_tag(elixir_repository, hexpm_tag, builder_token)
-            if exists:
-                log(f"  Found!")
-                builder_image = f"{elixir_repository}:{hexpm_tag}"
-                runner_image = build_runner_image(os_family, base_tag)
+    for base_tag in base_tags:
+        hexpm_tag = build_hexpm_tag(elixir, otp, os_family, base_tag)
+        log(f"  Trying: {hexpm_tag}")
+        exists, digest = verify_builder_tag(elixir_repository, hexpm_tag, builder_token)
+        if exists:
+            log(f"  Found!")
+            builder_image = f"{elixir_repository}:{hexpm_tag}"
+            runner_image = build_runner_image(os_family, base_tag)
 
-                set_output("builder-image", builder_image)
-                set_output("runner-image", runner_image)
-                set_output("elixir-version", elixir)
-                set_output("otp-version", otp)
-                set_output("builder-digest", digest)
-                return
+            set_output("builder-image", builder_image)
+            set_output("runner-image", runner_image)
+            set_output("elixir-version", elixir)
+            set_output("otp-version", otp)
+            set_output("builder-digest", digest)
+            return
 
-            log(f"  Not found (404)")
+        log(f"  Not found (404)")
 
     sys.exit(
-        f"No {elixir_repository} image found for Elixir {elixir}, "
-        f"{os_family}/{distribution} after trying OTP {', '.join(otp_candidates)} "
-        f"against {len(base_tags)} base tags: {', '.join(base_tags)}"
+        f"No {elixir_repository} image found for Elixir {elixir}, OTP {otp}, "
+        f"{os_family}/{distribution} after trying {len(base_tags)} candidates: "
+        f"{', '.join(base_tags)}"
     )
 
 
