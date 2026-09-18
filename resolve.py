@@ -355,7 +355,7 @@ def main():
     os_family = os.environ.get("INPUT_OS_FAMILY", os.environ.get("INPUT_OS-FAMILY", "auto")).strip()
     variant = os.environ.get("INPUT_VARIANT", "auto").strip()
     max_candidates = int(
-        os.environ.get("INPUT_MAX_CANDIDATES", os.environ.get("INPUT_MAX-CANDIDATES", "5"))
+        os.environ.get("INPUT_MAX_CANDIDATES", os.environ.get("INPUT_MAX-CANDIDATES", "10"))
     )
     elixir_repository = os.environ.get(
         "INPUT_ELIXIR_REPOSITORY", os.environ.get("INPUT_ELIXIR-REPOSITORY", "hexpm/elixir")

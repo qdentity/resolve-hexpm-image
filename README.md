@@ -25,7 +25,7 @@ Handles version prefix resolution (e.g., `1.17` → `1.17.3`), base image date t
 | `distribution` | no | `bookworm` | OS codename or `alpine` |
 | `os-family` | no | `auto` | `debian`, `ubuntu`, `alpine`, or `auto` |
 | `variant` | no | `auto` | `auto` = slim for debian, none for ubuntu/alpine |
-| `max-candidates` | no | `5` | Base image date tags to try |
+| `max-candidates` | no | `10` | Base image tags to try |
 | `elixir-repository` | no | `hexpm/elixir` | Docker Hub repository for Elixir builder images |
 | `github-token` | no | `${{ github.token }}` | GitHub API token |
 
